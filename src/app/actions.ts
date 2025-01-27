@@ -15,34 +15,31 @@ var instance = new Razorpay({
 
 export async function getOrders(){
     try{
-        const orders = await db
-        .select().from(orderSchema)
-        .leftJoin(foodSchema, eq(foodSchema.id, orderSchema.foodId))
+        const food = await db
+        .select().from(foodSchema)
 
-        return orders
+        return food ?? []
     } catch(err){
         throw new Error('Internal Server Error');
     }
 }
 
 
-export async function createOrder(data:{
-    order: {
-      id: string;
-      foodId: string;
-      amount: number;
-      currency: string;
-    };
-    food: {
-      id: string;
-      name: string;
-    } | null;
-  }) {
+export async function createOrder({food, userId}: {
+  food: {
+    id: string;
+  name: string;
+  img: string;
+  amount: number;
+  currency: string;
+  },
+  userId: string;
+}) {
     
     const orderOptions = {
-      amount: Math.round(data.order.amount * 100), // Convert to paise or cent
-      currency: data.order.currency,
-      receipt: data.order.id,
+      amount: Math.round(food.amount * 100), // Convert to paise or cent
+      currency: food.currency,
+      receipt: food.id,
       partial_payment: false,
       notes: {
         name: "kaheel",
@@ -57,6 +54,11 @@ export async function createOrder(data:{
           else resolve(order);
         });
       });
+
+      console.log("Order",order)
+
+      await db.insert(orderSchema).values({foodId:food?.id, userId: userId, razorpayOrderId: order.id });
+
   
       return {
         success: true,
@@ -76,6 +78,8 @@ export async function createOrder(data:{
   }
 
 
-export async function verification(res:NextResponse){
-    console.log(res);
-}
+// export async function POST(res:Response, req:Request){
+//   const data = await req.json();
+//   console.log("Verification Triggered", data);
+//   return Response.json({ success: true });
+// }

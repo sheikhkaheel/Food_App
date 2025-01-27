@@ -9,19 +9,14 @@ declare global {
 }
 
 export default function OrderButton({
-  order,
+  food,
 }: {
-  order: {
-    order: {
-      id: string;
-      foodId: string;
-      amount: number;
-      currency: string;
-    };
-    food: {
-      id: string;
-      name: string;
-    } | null;
+  food: {
+    id: string;
+    name: string;
+    img: string;
+    amount: number;
+    currency: string;
   };
 }) {
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
@@ -45,7 +40,10 @@ export default function OrderButton({
     }
 
     try {
-      const data = await createOrder(order);
+      if(!food) throw new Error("Food is Not Avaliable")
+      const userId = localStorage.getItem('user-id');
+      if(!userId) throw new Error('user not logged in')
+      const data = await createOrder({food, userId});
       console.log(data);
 
       if (!data.success) throw new Error('Order creation failed');
@@ -56,7 +54,7 @@ export default function OrderButton({
         currency: data.order?.currency,
         order_id: data.order?.id,
         name: 'Food Ordering App',
-        description: `Order for ${order.food?.name}`,
+        description: `Order for ${food?.name}`,
         handler: (response: any) => {
           console.log('Payment successful:', response);
           alert('Payment Successful');
