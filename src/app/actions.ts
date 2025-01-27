@@ -3,6 +3,7 @@
 import { foodSchema, orderSchema } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { db } from "..";
+import { NextResponse } from "next/server";
 
 const Razorpay = require('razorpay');
 
@@ -73,3 +74,8 @@ export async function createOrder(data:{
       };
     }
   }
+
+
+export async function verification(res:NextResponse){
+    console.log(res);
+}
