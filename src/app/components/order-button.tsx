@@ -1,6 +1,7 @@
-'use client'
-import { useEffect, useState } from 'react';
+"use client";
+import { useEffect, useState } from "react";
 import { createOrder } from "../actions";
+import { Loader2, ShoppingBag, CheckCircle2, AlertCircle } from "lucide-react";
 
 declare global {
   interface Window {
@@ -20,69 +21,126 @@ export default function OrderButton({
   };
 }) {
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
+  const [status, setStatus] = useState<
+    "idle" | "processing" | "success" | "error"
+  >("idle");
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
     script.async = true;
     script.onload = () => setRazorpayLoaded(true);
     document.body.appendChild(script);
 
     return () => {
-      document.body.removeChild(script);
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
     };
   }, []);
 
   const handlePayment = async () => {
-    if (!razorpayLoaded) {
-      alert('Razorpay is still loading');
-      return;
-    }
+    if (!razorpayLoaded) return;
+
+    setStatus("processing");
+    setErrorMessage("");
 
     try {
-      if(!food) throw new Error("Food is Not Avaliable")
-      const userId = localStorage.getItem('user-id');
-      if(!userId) throw new Error('user not logged in')
-      const data = await createOrder({food, userId});
-      console.log(data);
+      if (!food) throw new Error("Item unavailable");
 
-      if (!data.success) throw new Error('Order creation failed');
+      const userId = localStorage.getItem("user-id");
+      if (!userId) throw new Error("Please login to continue");
+
+      const data = await createOrder({ food, userId });
+
+      if (!data.success) throw new Error(data.error || "Order creation failed");
 
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: data.order?.amount,
         currency: data.order?.currency,
         order_id: data.order?.id,
-        name: 'Food Ordering App',
-        description: `Order for ${food?.name}`,
+        name: "Premium Eats",
+        description: `Ordering ${food?.name}`,
+        image: food.img,
         handler: (response: any) => {
-          console.log('Payment successful:', response);
-          alert('Payment Successful');
+          setStatus("success");
+          setTimeout(() => setStatus("idle"), 3000);
+        },
+        modal: {
+          ondismiss: () => setStatus("idle"),
         },
         prefill: {
-          name: 'Customer Name',
-          email: 'customer@example.com',
-          contact: '9999999999',
+          name: "Guest User",
+          email: "user@example.com",
         },
         theme: {
-          color: '#3399cc',
+          color: "#6366f1",
         },
       };
 
       const razorpay = new window.Razorpay(options);
       razorpay.open();
-    } catch (error) {
-      console.error('Payment failed:', error);
-      alert('Payment Failed');
+    } catch (error: any) {
+      console.error("Payment failed:", error);
+      setStatus("error");
+      setErrorMessage(error.message || "Something went wrong");
+      setTimeout(() => setStatus("idle"), 4000);
     }
   };
 
   return (
-    <button
-      className="w-full py-2 bg-white text-black rounded-lg"
-      onClick={handlePayment}
-    >
-      Buy
-    </button>
+    <div className="w-full space-y-2">
+      <button
+        disabled={
+          status === "processing" || status === "success" || !razorpayLoaded
+        }
+        className={`
+          relative w-full py-4 rounded-xl font-bold transition-all duration-300 
+          flex items-center justify-center gap-2 overflow-hidden
+          ${status === "idle" && "bg-indigo-600 hover:bg-indigo-700 text-white shadow-[0_0_20px_rgba(79,70,229,0.3)] active:scale-95"}
+          ${status === "processing" && "bg-zinc-800 text-zinc-400 cursor-wait"}
+          ${status === "success" && "bg-emerald-500 text-white"}
+          ${status === "error" && "bg-rose-500 text-white"}
+          ${!razorpayLoaded && "opacity-50 cursor-not-allowed"}
+        `}
+        onClick={handlePayment}
+      >
+        {status === "idle" && (
+          <>
+            <ShoppingBag size={18} />
+            <span>Order Now</span>
+          </>
+        )}
+
+        {status === "processing" && (
+          <>
+            <Loader2 size={18} className="animate-spin" />
+            <span>Processing...</span>
+          </>
+        )}
+
+        {status === "success" && (
+          <>
+            <CheckCircle2 size={18} />
+            <span>Success</span>
+          </>
+        )}
+
+        {status === "error" && (
+          <>
+            <AlertCircle size={18} />
+            <span>Failed</span>
+          </>
+        )}
+      </button>
+
+      {status === "error" && (
+        <p className="text-rose-500 text-[10px] uppercase tracking-widest font-bold text-center">
+          {errorMessage}
+        </p>
+      )}
+    </div>
   );
 }
