@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createOrder } from "../actions";
 import { Loader2, ShoppingBag, CheckCircle2, AlertCircle } from "lucide-react";
 
@@ -20,6 +21,7 @@ export default function OrderButton({
     currency: string;
   };
 }) {
+  const router = useRouter();
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
   const [status, setStatus] = useState<
     "idle" | "processing" | "success" | "error"
@@ -43,14 +45,17 @@ export default function OrderButton({
   const handlePayment = async () => {
     if (!razorpayLoaded) return;
 
+    const userId = localStorage.getItem("user-id");
+    if (!userId) {
+      router.push("/user");
+      return;
+    }
+
     setStatus("processing");
     setErrorMessage("");
 
     try {
       if (!food) throw new Error("Item unavailable");
-
-      const userId = localStorage.getItem("user-id");
-      if (!userId) throw new Error("Please login to continue");
 
       const data = await createOrder({ food, userId });
 
